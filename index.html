@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="sk">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Simulátor Kvadratickej Funkcie</title>
+  <style>
+    :root { --primary: #4f46e5; --bg: #f8fafc; --card-bg: #ffffff; --text: #1e293b; --border: #e2e8f0; }
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', system-ui, sans-serif; }
+    body { background-color: var(--bg); color: var(--text); padding: 12px; display: flex; flex-direction: column; gap: 12px; }
+    header { text-align: center; }
+    h2 { font-size: 1.2rem; color: var(--primary); }
+    p.subtitle { font-size: 0.85rem; color: #64748b; }
+    .container { display: grid; grid-template-columns: 1fr; gap: 12px; }
+    @media (min-width: 500px) { .container { grid-template-columns: 260px 1fr; } }
+    .controls-card { background: var(--card-bg); border: 1px solid var(--border); border-radius: 12px; padding: 12px; display: flex; flex-direction: column; gap: 10px; }
+    .equation-box { background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 8px; padding: 10px; text-align: center; }
+    .equation-title { font-size: 0.75rem; text-transform: uppercase; color: #1d4ed8; font-weight: 600; }
+    .equation { font-size: 1.1rem; font-weight: bold; color: #1e40af; margin-top: 2px; }
+    .control-group { display: flex; flex-direction: column; gap: 4px; }
+    .label-wrapper { display: flex; justify-content: space-between; font-size: 0.85rem; font-weight: 600; }
+    .param-a { color: #dc2626; } .param-m { color: #16a34a; } .param-n { color: #2563eb; }
+    input[type="range"] { width: 100%; height: 6px; accent-color: var(--primary); }
+    .canvas-card { background: var(--card-bg); border: 1px solid var(--border); border-radius: 12px; padding: 10px; display: flex; align-items: center; justify-content: center; }
+    canvas { width: 100%; max-width: 320px; height: auto; aspect-ratio: 1; background-color: #ffffff; border-radius: 8px; }
+    .info-badge { font-size: 0.85rem; background: #f1f5f9; padding: 6px 12px; border-radius: 20px; color: #475569; font-weight: 500; text-align: center; }
+  </style>
+</head>
+<body>
+  <header>
+    <h2>Simulátor: y = a(x - m)² + n</h2>
+    <p class="subtitle">Sleduj posun vrcholu V[m, n] a tvar paraboly</p>
+  </header>
+  <div class="container">
+    <div class="controls-card">
+      <div class="equation-box">
+        <div class="equation-title">Aktuálny predpis</div>
+        <div class="equation" id="equationDisplay">y = 1(x - 0)² + 0</div>
+      </div>
+      <div class="control-group">
+        <div class="label-wrapper param-a"><span>Orientácia (a):</span><span id="valA">1</span></div>
+        <input type="range" id="sliderA" min="-3" max="3" step="0.5" value="1">
+      </div>
+      <div class="control-group">
+        <div class="label-wrapper param-m"><span>Posun po osi X (m):</span><span id="valM">0</span></div>
+        <input type="range" id="sliderM" min="-5" max="5" step="1" value="0">
+      </div>
+      <div class="control-group">
+        <div class="label-wrapper param-n"><span>Posun po osi Y (n):</span><span id="valN">0</span></div>
+        <input type="range" id="sliderN" min="-5" max="5" step="1" value="0">
+      </div>
+      <div class="info-badge" id="vertexDisplay">📍 Vrchol: V[0, 0]</div>
+    </div>
+    <div class="canvas-card">
+      <canvas id="graphCanvas" width="320" height="320"></canvas>
+    </div>
+  </div>
+  <script>
+    const canvas = document.getElementById('graphCanvas'), ctx = canvas.getContext('2d');
+    const sliderA = document.getElementById('sliderA'), sliderM = document.getElementById('sliderM'), sliderN = document.getElementById('sliderN');
+    const valA = document.getElementById('valA'), valM = document.getElementById('valM'), valN = document.getElementById('valN');
+    const equationDisplay = document.getElementById('equationDisplay'), vertexDisplay = document.getElementById('vertexDisplay');
+    const width = canvas.width, height = canvas.height, scale = 20, originX = width / 2, originY = height / 2;
+
+    function drawGrid() {
+      ctx.clearRect(0, 0, width, height);
+      ctx.strokeStyle = '#f1f5f9'; ctx.lineWidth = 1;
+      for (let x = 0; x <= width; x += scale) { ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, height); ctx.stroke(); }
+      for (let y = 0; y <= height; y += scale) { ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(width, y); ctx.stroke(); }
+      ctx.strokeStyle = '#94a3b8'; ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.moveTo(0, originY); ctx.lineTo(width, originY); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(originX, 0); ctx.lineTo(originX, height); ctx.stroke();
+    }
+
+    function update() {
+      const a = parseFloat(sliderA.value), m = parseFloat(sliderM.value), n = parseFloat(sliderN.value);
+      valA.textContent = a; valM.textContent = m; valN.textContent = n;
+      const mSign = m >= 0 ? `- ${m}` : `+ ${Math.abs(m)}`;
+      const nSign = n >= 0 ? `+ ${n}` : `- ${Math.abs(n)}`;
+      equationDisplay.textContent = `y = ${a}(x ${mSign})² ${nSign}`;
+      vertexDisplay.textContent = `📍 Vrchol: V[${m}, ${n}]`;
+      drawGrid();
+      if (a !== 0) {
+        ctx.beginPath(); ctx.strokeStyle = '#4f46e5'; ctx.lineWidth = 3;
+        let first = true;
+        for (let pixelX = 0; pixelX <= width; pixelX += 2) {
+          const x = (pixelX - originX) / scale, y = a * Math.pow(x - m, 2) + n, pixelY = originY - (y * scale);
+          if (first) { ctx.moveTo(pixelX, pixelY); first = false; } else { ctx.lineTo(pixelX, pixelY); }
+        }
+        ctx.stroke();
+        const vx = originX + (m * scale), vy = originY - (n * scale);
+        ctx.beginPath(); ctx.arc(vx, vy, 5, 0, 2 * Math.PI); ctx.fillStyle = '#dc2626'; ctx.fill();
+        ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 2; ctx.stroke();
+      }
+    }
+    sliderA.oninput = sliderM.oninput = sliderN.oninput = update;
+    update();
+  </script>
+</body>
+</html>
